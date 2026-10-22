@@ -1,0 +1,186 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Seed Harvest Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two pickers, then one sheet-style row (the seed plan Data sheet), then the working and a small chart. */
+:root {
+  --bg: #f4f6f2; --panel: #ffffff; --fg: #1c2420; --muted: #5d6a62; --line: #d6ddd4;
+  --accent: #2e6a4c; --accent-soft: #e3efe7; --exp: #dbe7f5; --exp-fg: #1d3b5c; --warn: #8f5300; --warn-soft: #fbf0dc;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121714; --panel: #1a211d; --fg: #e4ebe6; --muted: #9aa8a0; --line: #2f3a34;
+  --accent: #7cc49c; --accent-soft: #1f3529; --exp: #1c2b3d; --exp-fg: #b9d3f2; --warn: #e3ad55; --warn-soft: #3a2d15; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121714; --panel: #1a211d; --fg: #e4ebe6; --muted: #9aa8a0; --line: #2f3a34;
+  --accent: #7cc49c; --accent-soft: #1f3529; --exp: #1c2b3d; --exp-fg: #b9d3f2; --warn: #e3ad55; --warn-soft: #3a2d15; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1200px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px; display: flex; flex-direction: column; gap: 18px; }
+h1 { font-size: 24px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 4px 0 0; }
+.pick { display: flex; gap: 12px; flex-wrap: wrap; }
+.pick label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.pick select { font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); min-width: 240px; max-width: 100%; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.sheet { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+th { font-weight: 600; font-size: 12px; text-align: left; vertical-align: bottom; padding: 6px 8px; border: 1px solid var(--line); background: var(--bg); min-width: 64px; }
+th.exp { background: var(--exp); color: var(--exp-fg); }
+td { padding: 6px 8px; border: 1px solid var(--line); white-space: nowrap; font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+td.t { font-family: var(--font-body); text-align: left; }
+td.exp { background: var(--exp); color: var(--exp-fg); font-weight: 500; }
+td input { width: 76px; font-family: var(--font-num); font-size: 13px; text-align: right; padding: 3px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--fg); }
+td input.months { width: 110px; text-align: left; font-family: var(--font-body); }
+td input.est { border-color: var(--warn); background: var(--warn-soft); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); }
+.flag { font-size: 12.5px; color: var(--warn); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; }
+.work { font-family: var(--font-num); font-size: 12.5px; display: flex; flex-direction: column; gap: 6px; }
+.work div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed var(--line); padding-bottom: 4px; }
+.work b { font-weight: 500; color: var(--accent); }
+.chart svg { width: 100%; height: auto; display: block; }
+.total { font-size: 13px; color: var(--muted); }
+.total b { font-family: var(--font-num); color: var(--fg); font-size: 16px; font-weight: 500; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Seed harvest calculator</h1>
+    <p class="sub">Choose a grower and a variety. The row below is the seed plan's Data sheet for that pair: change any planting and the expected production updates.</p>
+  </header>
+
+  <div class="pick">
+    <label for="g">Grower<select id="g"></select></label>
+    <label for="v">Variety<select id="v"></select></label>
+  </div>
+
+  <section class="card">
+    <h2 id="rowtitle">Seed plan</h2>
+    <div class="sheet">
+      <table>
+        <thead>
+          <tr>
+            <th>Cultivar</th><th>Multiplier Variety</th><th>Grower</th>
+            <th>Grower X-Factor Minitubers</th><th>Grower X-Factor G1</th><th>Grower X-Factor G2</th><th>Grower X-Factor G3-5</th>
+            <th>Planting Minituber</th><th>Planting G1 (kg)</th><th>Planting G2 (kg)</th><th>Planting G3 (kg)</th><th>Planting G4 (kg)</th><th>Planting G5 (kg)</th><th>Planting months</th>
+            <th class="exp">Exp Prod 2026 G1</th><th class="exp">Exp Prod 2026 G2</th><th class="exp">Exp Prod 2026 G3</th><th class="exp">Exp Prod 2026 G4</th><th class="exp">Exp Prod 2026 G5</th><th class="exp">Exp Prod 2026 G6</th>
+          </tr>
+        </thead>
+        <tbody><tr id="row"></tr></tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent-soft)"></i>Planting from the Elders upload</span>
+      <span><i style="background:var(--panel)"></i>Example value from the seed plan, change it</span>
+      <span><i style="background:var(--exp)"></i>Expected production (tonnes), calculated</span>
+    </div>
+    <div class="flag" id="flag"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>How each figure is worked out</h2>
+      <div class="work" id="work"></div>
+      <div class="total" id="total"></div>
+    </div>
+    <div class="card">
+      <h2>Expected production by generation (t)</h2>
+      <div class="chart" id="chart"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const GROWERS=[{"n": "Ackley Julian", "c": "ELD1", "b": "JR & AC Ackley", "x": [0.6, 6, 6, 8.5]}, {"n": "Agronico", "c": "", "b": "Agronico", "x": null}, {"n": "Ayres Colin", "c": "ELD2", "b": "GP Ayres & Sons Pty Ltd", "x": [0.6, 6, 6, 8]}, {"n": "Bone Andrew", "c": "ELD4", "b": "AG & NC Bone", "x": [0.6, 6.5, 6.5, 8.5]}, {"n": "Bone Gavin", "c": "", "b": "G & I Bone", "x": [0.6, 6, 6, 8.5]}, {"n": "Coal Valley Seed", "c": "ELD6", "b": "Coal Valley Seeds", "x": [0.6, 6, 6, 8.5]}, {"n": "Collins Anthony", "c": "ELD7", "b": "AJ Collins", "x": [0.6, 6, 6, 8]}, {"n": "Cooper Peter", "c": "ELD8", "b": "Cooper Farming", "x": [0.5, 8, 8, 8]}, {"n": "Crick Gary", "c": "ELD9", "b": "GA Crick & Co P/L", "x": [0.6, 6, 6, 8.5]}, {"n": "Dowling", "c": "ELD14", "b": "Dowling Agritech", "x": [0.6, 7.5, 7.5, 8.5]}, {"n": "Downey & Co", "c": "", "b": "DOWNEY & CO. TRUST", "x": null}, {"n": "Elphin Pastoral", "c": "ELD15", "b": "Elphin Pastoral", "x": [0.5, 7, 7, 9]}, {"n": "Greenvale", "c": "ELD23", "b": "Greenvale Farming P/L (Richie May)", "x": [0.7, 8, 8, 8.5]}, {"n": "Grigg Russell", "c": "ELD24", "b": "W Grigg & Sons", "x": [0.6, 6.5, 6.5, 9]}, {"n": "Haintz Danny", "c": "", "b": "HR Haintz & Sons", "x": [0.6, 6, 6, 8.5]}, {"n": "Hamish Henke", "c": "ELD25", "b": "Henke (no trading details)", "x": [0.6, 6.5, 6.5, 8.5]}, {"n": "Hann Mark", "c": "ELD26", "b": "WN & F Hann", "x": [0.7, 8, 8, 9]}, {"n": "Lock Peter", "c": "", "b": "Lockland Pastoral", "x": [0.7, 6, 6, 8]}, {"n": "Lyons Seth", "c": "ELD32", "b": "Peak Farms", "x": [0.6, 6, 6, 7.5]}, {"n": "Malcolm Shane", "c": "ELD33", "b": "S & J Malcolm", "x": [0.7, 6, 6, 8.5]}, {"n": "Montano Sam", "c": "", "b": "Sdana Produce Pty Ltd", "x": [0.6, 6.5, 6.5, 9]}, {"n": "Muster Clint", "c": "ELD34", "b": "DM, JK & CD Muster", "x": [0.7, 5, 5, 7]}, {"n": "Parker Allan", "c": "ELD35", "b": "A Parker & Sons", "x": null}, {"n": "Peters Mark", "c": "ELD36", "b": "M.W Peters & R.N Stoneman", "x": [0.6, 6, 6, 9]}, {"n": "Rieniets Steve", "c": "", "b": "V.A, S, C.P & S.J Rieniets", "x": [0.6, 6, 6.5, 8.5]}, {"n": "Trethewey Richard", "c": "ELD40", "b": "Kangaroo Island Seeds", "x": [0.5, 5, 5, 7]}, {"n": "Warner Ben", "c": "ELD41", "b": "BL & LJ Warner Pty Ltd", "x": [0.5, 5, 5, 6]}, {"n": "Westcott Steve", "c": "ELD42", "b": "SL & K Westcott", "x": [0.6, 6, 6, 8]}, {"n": "Wilson Greg", "c": "", "b": "Wilson (no trading details)", "x": [0.7, 10, 10, 18]}];
+const VARIETIES=[["06 CP 75 B10", 0.85], ["06 CP 75 B12", 0.8], ["Allora", 0.9], ["Amany", 0.85], ["Apolline", 0.9], ["Argos", 0.65], ["Baltic Cream", 0.85], ["Baltic Fire", 0.8], ["Baltic Rose", 0.8], ["Beo", 0.8], ["Bliss", 0.7], ["Bounty", 0.9], ["Cabaret", 0.9], ["Casablanca", 0.96], ["Cinderalla", 0.8], ["Cleo", 0.8], ["Daisy", 0.9], ["Decibel", 0.8], ["Elland", 0.8], ["Emerald", 0.85], ["Eva", 0.85], ["Excalibur", 0.95], ["FL", 0.7], ["Fidelia", 0.95], ["Foxy", 0.8], ["Gatsby", 0.8], ["Gwene", 0.85], ["Harmony", 0.9], ["Harry", 0.8], ["Inova", 0.8], ["Kelly", 0.8], ["Kestrel", 0.6], ["Kingsman", 0.85], ["La Strada", 0.8], ["Lanorma", 0.8], ["Laperla", 0.85], ["Maiflower", 0.8], ["Malou", 0.85], ["Manhattan", 0.8], ["Marguerite", 0.8], ["Merlot", 0.95], ["Nadine", 0.9], ["Noha", 0.8], ["Oxania", 0.8], ["Paroli", 0.8], ["Pelikan", 0.85], ["Pink Gypsy", 0.9], ["Punchy", 0.8], ["Rubesse", 0.8], ["Ruby Lou", 0.8], ["Tibury", 0.8], ["Topaz", 0.8], ["Valor", 0.85], ["Vizelle", 0.8], ["Wega", 0.85], ["White Star", 0.85]];
+const ELDERS={"Bone Andrew|Bounty": {"G1": 800.0, "G2": 6000.0, "G3": 25000.0}, "Bone Andrew|Daisy": {"G1": 2500.0, "G2": 5000.0, "G3": 12000.0}, "Bone Andrew|Elland": {"G2": 1500.0}, "Bone Andrew|Malou": {"G2": 2500.0}, "Bone Andrew|Nadine": {"G2": 3500.0, "G3": 12000.0}, "Bone Andrew|White Star": {"G2": 2500.0}, "Collins Anthony|Bounty": {"G1": 800.0, "G2": 5000.0}, "Collins Anthony|Eva": {"G3": 50.0}, "Crick Gary|Baltic Fire": {"G1": 1000.0, "G2": 30000.0}, "Crick Gary|Elland": {"G1": 75.0, "G2": 11000.0}, "Crick Gary|Nadine": {"G1": 500.0, "G2": 5000.0, "G4": 12000.0}, "Dowling|Excalibur": {"G1": 800.0, "G2": 12000.0, "G3": 10000.0}, "Dowling|Kingsman": {"G1": 1000.0, "G2": 6000.0, "G3": 10000.0}, "Elphin Pastoral|Baltic Fire": {"G1": 250.0}, "Elphin Pastoral|Bounty": {"G1": 500.0, "G2": 5150.0, "G3": 15000.0}, "Elphin Pastoral|Daisy": {"G1": 1500.0, "G2": 6000.0, "G3": 7000.0}, "Elphin Pastoral|Malou": {"G1": 500.0, "G2": 2000.0, "G3": 5000.0}, "Elphin Pastoral|Manhattan": {"G1": 500.0, "G2": 4000.0, "G3": 30000.0}, "Greenvale|Gatsby": {"G4": 20000.0}, "Grigg Russell|Elland": {"G1": 500.0, "G2": 6000.0}, "Grigg Russell|Excalibur": {"G1": 1000.0, "G2": 13950.0, "G3": 6000.0}, "Grigg Russell|Kingsman": {"G1": 800.0, "G2": 6000.0, "G3": 13000.0}, "Grigg Russell|Nadine": {"G1": 890.0, "G2": 6500.0, "G4": 14000.0}, "Grigg Russell|Tibury": {"G1": 800.0, "G2": 4000.0}, "Hann Mark|Daisy": {"G1": 3800.0, "G2": 8000.0, "G3": 20000.0}, "Hann Mark|Eva": {"G2": 7500.0}, "Hann Mark|Gatsby": {"G1": 75.0, "G2": 6000.0}, "Muster Clint|Baltic Fire": {"G3": 8750.0, "G4": 7900.0}, "Muster Clint|Excalibur": {"G3": 5000.0}, "Muster Clint|Gatsby": {"G2": 6000.0, "G4": 16000.0}, "Muster Clint|Kingsman": {"G3": 15000.0}, "Trethewey Richard|Daisy": {"G1": 3000.0, "G2": 4000.0, "G3": 10000.0}, "Warner Ben|Bounty": {"G3": 10000.0}, "Warner Ben|Nadine": {"G3": 8540.0}, "Barry Ward|Gatsby": {"G4": 5000.0}, "Brent Nicol WA|Daisy": {"G1": 500.0}, "Dorset Farms|Gatsby": {"G1": 600.0, "G2": 4500.0}, "Frank Salso WA|Daisy": {"G1": 1000.0}, "GMT|Daisy": {"G1": 2500.0}, "Heyes Deon|Daisy": {"G3": 27375.0}, "Jenning Stuart|Bounty": {"G3": 11030.0}, "Jenning Stuart|Fidelia": {"G2": 5070.0}, "Jenning Stuart|Gatsby": {"G4": 5000.0}, "Jenning Stuart|Lanorma": {"G3": 11000.0}, "Jenning Stuart|Manhattan": {"G3": 10000.0}, "Josh Decampo|Daisy": {"G1": 3000.0}, "Landale Andrew|Daisy": {"G1": 3500.0, "G2": 5000.0}, "Landale Andrew|Excalibur": {"G3": 6000.0}, "Landale Andrew|Kingsman": {"G1": 600.0}, "Parker Allan|Baltic Fire": {"G1": 600.0, "G2": 6500.0, "G3": 500.0}, "Parker Allan|Bliss": {"G2": 5000.0}, "Parker Allan|Daisy": {"G1": 1450.0}, "Parker Allan|Elland": {"G1": 350.0, "G2": 7500.0, "G3": 1500.0}, "Parker Allan|Eva": {"G1": 650.0, "G2": 4900.0, "G3": 2000.0}, "Ex Hann Mark|Daisy": {"G4": 14920.0}};
+const TBC=[0.61, 6.44, 6.46, 8.62];
+(() => {
+  const GENS = ['Minitubers', 'G1', 'G2', 'G3', 'G4', 'G5'];
+  const OUT = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6'];
+  const BAND = [0, 1, 2, 3, 3, 3];
+  const EXAMPLE = [1000, 480, 2300, 11040, 20000, 10000];
+  const S = { x: [0, 0, 0, 0], plant: EXAMPLE.slice(), fromElders: [false, false, false, false, false, false], months: '', est: false };
+  const $ = (id) => document.getElementById(id);
+  const fT = (v) => v.toLocaleString('en-AU', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  const fN = (v) => v.toLocaleString('en-AU', { maximumFractionDigits: 2 });
+  const mult = () => Number(VARIETIES.find(v => v[0] === $('v').value)[1]);
+  const grower = () => GROWERS.find(g => g.n === $('g').value);
+
+  GROWERS.forEach(g => $('g').append(new Option(g.n + (g.c ? ` (${g.c})` : ''), g.n)));
+  VARIETIES.forEach(v => $('v').append(new Option(v[0], v[0])));
+  $('g').value = 'Ackley Julian'; $('v').value = 'Manhattan';
+
+  function reset() {
+    const g = grower();
+    S.est = !g.x; S.x = (g.x || TBC).slice();
+    const el = ELDERS[g.n + '|' + $('v').value] || {};
+    S.plant = GENS.map((k, i) => el[k] != null ? el[k] : EXAMPLE[i]);
+    S.fromElders = GENS.map(k => el[k] != null);
+    S.months = '';
+    build();
+  }
+  function td(text, cls) { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; return c; }
+  function inputCell(val, onChange, cls, label, bg) {
+    const c = document.createElement('td'); const i = document.createElement('input');
+    i.type = 'number'; i.step = 'any'; i.min = '0'; i.value = val; if (cls) i.className = cls; i.setAttribute('aria-label', label);
+    if (bg) i.style.background = bg;
+    i.addEventListener('input', () => { const n = Number(i.value); onChange(i.value === '' || !isFinite(n) ? 0 : n); calc(); });
+    c.append(i); return c;
+  }
+  function build() {
+    const g = grower(), row = $('row'); row.innerHTML = '';
+    $('rowtitle').textContent = `${$('v').value} grown by ${g.n}`;
+    row.append(td($('v').value, 't'), td(String(mult())), td(g.n, 't'));
+    ['Minitubers', 'G1', 'G2', 'G3-5'].forEach((lbl, i) => row.append(inputCell(S.x[i], n => S.x[i] = n, S.est ? 'est' : '', 'Grower X-Factor ' + lbl)));
+    GENS.forEach((k, i) => row.append(inputCell(S.plant[i], n => { S.plant[i] = n; }, '', 'Planting ' + k, S.fromElders[i] ? 'var(--accent-soft)' : '')));
+    const mc = document.createElement('td'); const mi = document.createElement('input'); mi.className = 'months'; mi.placeholder = 'e.g. Sep–Oct'; mi.value = S.months;
+    mi.setAttribute('aria-label', 'Planting months'); mi.addEventListener('input', () => S.months = mi.value); mc.append(mi); row.append(mc);
+    OUT.forEach(k => row.append(td('', 'exp')));
+    $('flag').textContent = S.est ? `${g.n} has no X-factors in the seed plan. The highlighted values are the plan's own "tbc" average row; replace them with the grower's real figures.` : '';
+    calc();
+  }
+  function calc() {
+    const m = mult();
+    const exp = GENS.map((k, i) => S.plant[i] * S.x[BAND[i]] * m / 1000);
+    const cells = $('row').querySelectorAll('td.exp');
+    exp.forEach((e, i) => cells[i].textContent = fT(e));
+    const w = $('work'); w.innerHTML = '';
+    exp.forEach((e, i) => {
+      const d = document.createElement('div'); const a = document.createElement('span'); const b = document.createElement('b');
+      a.textContent = `${OUT[i]} = ${fN(S.plant[i])} ${i === 0 ? 'minitubers' : 'kg ' + GENS[i]} × ${fN(S.x[BAND[i]])} × ${m} ÷ 1000`;
+      b.textContent = fT(e) + ' t'; d.append(a, b); w.append(d);
+    });
+    const tot = exp.reduce((s, v) => s + v, 0);
+    $('total').innerHTML = ''; $('total').append('Total expected seed production: ');
+    const tb = document.createElement('b'); tb.textContent = fT(tot) + ' t'; $('total').append(tb);
+    chart(exp);
+  }
+  function chart(exp) {
+    const W = 460, H = 240, l = 34, r = 8, t = 22, b = 28, max = Math.max(...exp, 0.001);
+    const bw = (W - l - r) / exp.length;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Expected production by generation');
+    const mk = (tag, attrs, text) => { const n = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v)); if (text != null) n.textContent = text; svg.append(n); return n; };
+    mk('line', { x1: l, x2: W - r, y1: H - b, y2: H - b, stroke: 'var(--line)' });
+    exp.forEach((e, i) => {
+      const h = (H - t - b) * e / max, x = l + i * bw + bw * 0.18, w = bw * 0.64;
+      mk('rect', { x, y: H - b - h, width: w, height: Math.max(h, 0.5), rx: 4, fill: 'var(--accent)' });
+      mk('text', { x: x + w / 2, y: H - b - h - 6, 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--fg)', 'font-family': 'IBM Plex Mono, monospace' }, e >= 100 ? e.toFixed(0) : e >= 10 ? e.toFixed(1) : e.toFixed(2));
+      mk('text', { x: x + w / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': 12, fill: 'var(--muted)' }, OUT[i]);
+    });
+    $('chart').innerHTML = ''; $('chart').append(svg);
+  }
+  $('g').addEventListener('change', reset);
+  $('v').addEventListener('change', reset);
+  reset();
+})();
+</script>
+
+</body></html>
